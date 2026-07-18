@@ -20,6 +20,12 @@ const btnText = submitBtn.querySelector('.btn-text');
 const loader = submitBtn.querySelector('.loader');
 const statusMessage = document.getElementById('statusMessage');
 
+// Load name from cache
+const savedName = localStorage.getItem('plexReqName');
+if (savedName) {
+  document.getElementById('friendName').value = savedName;
+}
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   
@@ -32,12 +38,18 @@ form.addEventListener('submit', async (e) => {
   const friendName = formData.get('friendName');
   const mediaTitle = formData.get('mediaTitle');
   const mediaType = formData.get('mediaType');
+  const releaseYear = formData.get('releaseYear');
   
+  // Save name to cache
+  localStorage.setItem('plexReqName', friendName);
+  
+  const yearText = releaseYear ? ` (${releaseYear})` : '';
   const payload = {
-    content: `New Request from ${friendName}: ${mediaTitle} (${mediaType})`,
+    content: `New Request from ${friendName}: ${mediaTitle}${yearText} [${mediaType}]`,
     friendName,
     mediaTitle,
     mediaType,
+    releaseYear,
     timestamp: new Date().toISOString()
   };
 
@@ -53,6 +65,7 @@ form.addEventListener('submit', async (e) => {
       console.log('Simulated Webhook Payload:', payload);
       showStatus('Success! (Simulated, as webhook URL is not set)', 'success');
       form.reset();
+      document.getElementById('friendName').value = friendName; // Restore name
       return;
     }
 
@@ -70,6 +83,7 @@ form.addEventListener('submit', async (e) => {
 
     showStatus('Request sent successfully!', 'success');
     form.reset();
+    document.getElementById('friendName').value = friendName; // Restore name
     
   } catch (error) {
     console.error('Error sending request:', error);
