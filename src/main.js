@@ -1,6 +1,6 @@
 import { registerSW } from 'virtual:pwa-register';
 import { db, auth, messaging } from './firebase.js';
-import { collection, addDoc, serverTimestamp, setDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, setDoc, doc, onSnapshot, query, orderBy, deleteDoc } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { getToken, onMessage } from 'firebase/messaging';
 
@@ -62,6 +62,95 @@ const btnText = submitBtn.querySelector('.btn-text');
 const loader = submitBtn.querySelector('.loader');
 const statusMessage = document.getElementById('statusMessage');
 
+// Tab Switching Logic
+const navItems = document.querySelectorAll('.nav-item');
+const views = document.querySelectorAll('.view');
+
+navItems.forEach(item => {
+  item.addEventListener('click', () => {
+    // Remove active class from all nav items and views
+    navItems.forEach(nav => nav.classList.remove('active'));
+    views.forEach(view => {
+      view.classList.remove('active');
+      view.classList.add('hidden');
+    });
+
+    // Add active class to clicked nav item
+    item.classList.add('active');
+    
+    // Show corresponding view
+    const targetId = item.getAttribute('data-target');
+    const targetView = document.getElementById(targetId);
+    targetView.classList.remove('hidden');
+    targetView.classList.add('active');
+  });
+});
+
+// Fetch Messages from Firestore
+const messagesList = document.getElementById('messages-list');
+const q = query(collection(db, 'broadcasts'), orderBy('createdAt', 'desc'));
+onSnapshot(q, (snapshot) => {
+  messagesList.innerHTML = '';
+  if (snapshot.empty) {
+    messagesList.innerHTML = '<div class="loading-messages">No messages yet.</div>';
+    return;
+  }
+  
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
+    
+    const item = document.createElement('div');
+    item.className = 'message-item';
+    item.innerHTML = `
+      <div class="message-header">
+        <span class="message-title">${data.title}</span>
+        <span class="message-time">${dateObj.toLocaleDateString()}</span>
+      </div>
+      <div class="message-body">${data.body}</div>
+    `;
+    messagesList.appendChild(item);
+  });
+});
+
+// Notification Toggle Logic
+const notificationToggle = document.getElementById('notification-toggle');
+
+// Initialize toggle state based on current permission
+if (Notification.permission === 'granted') {
+  notificationToggle.checked = true;
+} else {
+  notificationToggle.checked = false;
+}
+
+notificationToggle.addEventListener('change', async (e) => {
+  if (e.target.checked) {
+    // User wants to turn them ON
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      await requestNotificationPermission();
+    } else {
+      // Permission denied by browser, revert toggle
+      e.target.checked = false;
+      alert('You must enable notifications in your browser settings to receive pushes.');
+    }
+  } else {
+    // User wants to turn them OFF
+    try {
+      const currentToken = await getToken(messaging, { 
+        vapidKey: 'BGGZz1-iAKChm-xiCjsj_Ocq08GeyzYzwuw8msXeDTEG8WqJUNWgCi7YSX079C69U_J-e1cepjluK4hRJe5K2qQ' 
+      });
+      if (currentToken) {
+        await deleteDoc(doc(db, 'fcm_tokens', currentToken));
+        console.log('Token deleted from Firestore.');
+      }
+    } catch (err) {
+      console.error('Error removing token:', err);
+    }
+  }
+});
+
+
 // Load name from cache
 const savedName = localStorage.getItem('plexReqName');
 if (savedName) {
@@ -70,9 +159,6 @@ if (savedName) {
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  
-  // Ask for notification permission if not already granted
-  requestNotificationPermission();
 
   // Reset status
   statusMessage.className = 'status-message hidden';

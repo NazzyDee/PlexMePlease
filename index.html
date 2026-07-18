@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#0f0f13">
     <meta name="description" content="Request Movies and TV Shows for Plex" />
-    <title>Plex Request</title>
+    <title>PlexMePlease</title>
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,48 +22,88 @@
             <path d="M10 8L16 12L10 16V8Z" fill="var(--primary)"/>
             <path fill-rule="evenodd" clip-rule="evenodd" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20Z" fill="var(--primary)"/>
           </svg>
-          <h1>PlexReq</h1>
+          <h1>PlexMePlease</h1>
         </div>
       </header>
 
       <main class="app-main">
-        <div class="card">
-          <h2>Request Media</h2>
-          <p class="subtitle">Submit a movie or TV show request to the server.</p>
+        <!-- Request View (Home) -->
+        <div id="view-request" class="view active">
+          <div class="card">
+            <h2>Request Media</h2>
+            <p class="subtitle">Submit a movie or TV show request to the server.</p>
+            
+            <form id="request-form">
+              <div class="form-group">
+                <label for="friendName">Your Name</label>
+                <input type="text" id="friendName" name="friendName" placeholder="e.g. John Doe" required />
+              </div>
+
+              <div class="form-group">
+                <label for="mediaTitle">Title</label>
+                <input type="text" id="mediaTitle" name="mediaTitle" placeholder="e.g. Inception or The Office" required />
+              </div>
+
+              <div class="form-group">
+                <label for="releaseYear">Year of Release</label>
+                <input type="number" id="releaseYear" name="releaseYear" placeholder="e.g. 2010" />
+              </div>
+
+              <div class="form-group">
+                <label for="mediaType">Type</label>
+                <select id="mediaType" name="mediaType">
+                  <option value="movie">Movie</option>
+                  <option value="tv">TV Show</option>
+                </select>
+              </div>
+
+              <button type="submit" id="submitBtn">
+                <span class="btn-text">Send Request</span>
+                <span class="loader hidden"></span>
+              </button>
+            </form>
+
+            <div id="statusMessage" class="status-message hidden"></div>
+          </div>
+        </div>
+
+        <!-- Messages View -->
+        <div id="view-messages" class="view hidden">
+          <div class="settings-card">
+            <div class="setting-row">
+              <div class="setting-info">
+                <h3>Push Notifications</h3>
+                <p>Get notified when a request is fulfilled</p>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="notification-toggle">
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
           
-          <form id="request-form">
-            <div class="form-group">
-              <label for="friendName">Your Name</label>
-              <input type="text" id="friendName" name="friendName" placeholder="e.g. John Doe" required />
-            </div>
-
-            <div class="form-group">
-              <label for="mediaTitle">Title</label>
-              <input type="text" id="mediaTitle" name="mediaTitle" placeholder="e.g. Inception or The Office" required />
-            </div>
-
-            <div class="form-group">
-              <label for="releaseYear">Year of Release</label>
-              <input type="number" id="releaseYear" name="releaseYear" placeholder="e.g. 2010" />
-            </div>
-
-            <div class="form-group">
-              <label for="mediaType">Type</label>
-              <select id="mediaType" name="mediaType">
-                <option value="movie">Movie</option>
-                <option value="tv">TV Show</option>
-              </select>
-            </div>
-
-            <button type="submit" id="submitBtn">
-              <span class="btn-text">Send Request</span>
-              <span class="loader hidden"></span>
-            </button>
-          </form>
-
-          <div id="statusMessage" class="status-message hidden"></div>
+          <h2 class="section-title">Inbox</h2>
+          <div id="messages-list" class="messages-list">
+            <div class="loading-messages">Loading messages...</div>
+          </div>
         </div>
       </main>
+
+      <nav class="bottom-nav">
+        <button class="nav-item active" data-target="view-request">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <span>Home</span>
+        </button>
+        <button class="nav-item" data-target="view-messages">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span>Messages</span>
+        </button>
+      </nav>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>
