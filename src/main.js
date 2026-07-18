@@ -1,20 +1,57 @@
 import { registerSW } from 'virtual:pwa-register';
-import { db, auth } from './firebase.js';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth, messaging } from './firebase.js';
+import { collection, addDoc, serverTimestamp, setDoc, doc } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
+import { getToken, onMessage } from 'firebase/messaging';
 
 // Authenticate anonymously on load
 signInAnonymously(auth).catch(console.error);
 
+// Request Push Notification Permission
+async function requestNotificationPermission() {
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      const currentToken = await getToken(messaging, { 
+        vapidKey: 'BGGZz1-iAKChm-xiCjsj_Ocq08GeyzYzwuw8msXeDTEG8WqJUNWgCi7YSX079C69U_J-e1cepjluK4hRJe5K2qQ' 
+      });
+      if (currentToken) {
+        console.log('FCM Token:', currentToken);
+        // Save token to Firestore
+        await setDoc(doc(db, 'fcm_tokens', currentToken), {
+          token: currentToken,
+          app: 'PlexMePlease',
+          createdAt: serverTimestamp()
+        }, { merge: true });
+      } else {
+        console.log('No registration token available.');
+      }
+    }
+  } catch (err) {
+    console.error('An error occurred while retrieving token. ', err);
+  }
+}
+
+// Handle foreground messages
+onMessage(messaging, (payload) => {
+  console.log('Message received. ', payload);
+  // Optionally show a toast notification here
+});
+
 // Register Service Worker for PWA
 const updateSW = registerSW({
   onNeedRefresh() {
-    // Show a prompt to user to refresh the page
     console.log('New content available, please refresh.');
   },
   onOfflineReady() {
     console.log('App is ready to work offline.');
   },
+});
+
+// Attach permission request to a button or user action
+// For PlexMePlease, we can request it when they click the input or on page load
+document.addEventListener('DOMContentLoaded', () => {
+  // Let's create a subtle notification bell or just request on first click
 });
 
 
@@ -34,6 +71,9 @@ if (savedName) {
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   
+  // Ask for notification permission if not already granted
+  requestNotificationPermission();
+
   // Reset status
   statusMessage.className = 'status-message hidden';
   statusMessage.textContent = '';
