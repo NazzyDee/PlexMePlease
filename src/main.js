@@ -1,6 +1,10 @@
 import { registerSW } from 'virtual:pwa-register';
-import { db } from './firebase.js';
+import { db, auth } from './firebase.js';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { signInAnonymously } from 'firebase/auth';
+
+// Authenticate anonymously on load
+signInAnonymously(auth).catch(console.error);
 
 // Register Service Worker for PWA
 const updateSW = registerSW({
