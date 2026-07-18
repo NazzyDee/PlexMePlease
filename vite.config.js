@@ -6,7 +6,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: {
-        enabled: true
+        enabled: false // Disabled in dev so code changes reflect immediately
       },
       manifest: {
         name: 'Plex Request',
