@@ -1,4 +1,6 @@
 import { registerSW } from 'virtual:pwa-register';
+import { db } from './firebase.js';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 // Register Service Worker for PWA
 const updateSW = registerSW({
@@ -11,8 +13,7 @@ const updateSW = registerSW({
   },
 });
 
-// IMPORTANT: Replace this with the actual Webhook URL from the other app
-const WEBHOOK_URL = 'YOUR_WEBHOOK_URL_HERE'; 
+
 
 const form = document.getElementById('request-form');
 const submitBtn = document.getElementById('submitBtn');
@@ -45,12 +46,13 @@ form.addEventListener('submit', async (e) => {
   
   const yearText = releaseYear ? ` (${releaseYear})` : '';
   const payload = {
-    content: `New Request from ${friendName}: ${mediaTitle}${yearText} [${mediaType}]`,
-    friendName,
-    mediaTitle,
-    mediaType,
-    releaseYear,
-    timestamp: new Date().toISOString()
+    app: 'PlexMePlease',
+    type: 'feature_request',
+    status: 'unresolved',
+    message: `New Request from ${friendName}: ${mediaTitle}${yearText} [${mediaType}]`,
+    user: friendName,
+    createdAt: serverTimestamp(),
+    priority: 'Normal'
   };
 
   // Set loading state
@@ -59,28 +61,9 @@ form.addEventListener('submit', async (e) => {
   loader.classList.remove('hidden');
 
   try {
-    // If webhook is not set up, simulate a delay
-    if (WEBHOOK_URL === 'YOUR_WEBHOOK_URL_HERE') {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log('Simulated Webhook Payload:', payload);
-      showStatus('Success! (Simulated, as webhook URL is not set)', 'success');
-      form.reset();
-      document.getElementById('friendName').value = friendName; // Restore name
-      return;
-    }
-
-    const response = await fetch(WEBHOOK_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
+    const docRef = await addDoc(collection(db, 'feedback'), payload);
+    console.log("Document written with ID: ", docRef.id);
+    
     showStatus('Request sent successfully!', 'success');
     form.reset();
     document.getElementById('friendName').value = friendName; // Restore name
