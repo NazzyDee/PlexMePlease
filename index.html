@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0f0f13">
+    <meta name="description" content="Request Movies and TV Shows for Plex" />
+    <title>Plex Request</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/style.css">
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <div class="logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 8L16 12L10 16V8Z" fill="var(--primary)"/>
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20Z" fill="var(--primary)"/>
+          </svg>
+          <h1>PlexReq</h1>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <div class="card">
+          <h2>Request Media</h2>
+          <p class="subtitle">Submit a movie or TV show request to the server.</p>
+          
+          <form id="request-form">
+            <div class="form-group">
+              <label for="friendName">Your Name</label>
+              <input type="text" id="friendName" name="friendName" placeholder="e.g. John Doe" required />
+            </div>
+
+            <div class="form-group">
+              <label for="mediaTitle">Media Title</label>
+              <input type="text" id="mediaTitle" name="mediaTitle" placeholder="e.g. Inception or The Office" required />
+            </div>
+
+            <div class="form-group">
+              <label for="mediaType">Type</label>
+              <select id="mediaType" name="mediaType" required>
+                <option value="movie">Movie</option>
+                <option value="tv">TV Show</option>
+              </select>
+            </div>
+
+            <button type="submit" id="submitBtn">
+              <span class="btn-text">Send Request</span>
+              <span class="loader hidden"></span>
+            </button>
+          </form>
+
+          <div id="statusMessage" class="status-message hidden"></div>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
