@@ -152,7 +152,7 @@ notificationToggle.addEventListener('change', async (e) => {
 
 
 // Load name from cache
-const savedName = localStorage.getItem('plexReqName');
+const savedName = localStorage.getItem('plexMePleaseName');
 if (savedName) {
   document.getElementById('friendName').value = savedName;
 }
@@ -172,7 +172,7 @@ form.addEventListener('submit', async (e) => {
   const releaseYear = formData.get('releaseYear');
   
   // Save name to cache
-  localStorage.setItem('plexReqName', friendName);
+  localStorage.setItem('plexMePleaseName', friendName);
   
   const yearText = releaseYear ? ` (${releaseYear})` : '';
   const payload = {
