@@ -1,5 +1,5 @@
 import { registerSW } from 'virtual:pwa-register';
-import { db, auth, messaging } from './firebase.js';
+import { db, auth, messaging } from './firebase-config.js';
 import { collection, addDoc, serverTimestamp, setDoc, doc, onSnapshot, query, orderBy, deleteDoc } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { getToken, onMessage } from 'firebase/messaging';
