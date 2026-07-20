@@ -154,7 +154,11 @@ notificationToggle.addEventListener('change', async (e) => {
 // Load name from cache
 const savedName = localStorage.getItem('plexMePleaseName');
 if (savedName) {
-  document.getElementById('friendName').value = savedName;
+  const friendNameInput = document.getElementById('friendName');
+  if (friendNameInput) friendNameInput.value = savedName;
+  
+  const senderNameInput = document.getElementById('senderName');
+  if (senderNameInput) senderNameInput.value = savedName;
 }
 
 form.addEventListener('submit', async (e) => {
@@ -212,4 +216,67 @@ form.addEventListener('submit', async (e) => {
 function showStatus(message, type) {
   statusMessage.textContent = message;
   statusMessage.className = `status-message ${type}`;
+}
+
+// Handle Send Message Form
+const messageForm = document.getElementById('message-form');
+if (messageForm) {
+  const msgSubmitBtn = document.getElementById('sendMessageBtn');
+  const msgBtnText = msgSubmitBtn.querySelector('.btn-text');
+  const msgLoader = msgSubmitBtn.querySelector('.loader');
+  const messageStatus = document.getElementById('messageStatus');
+
+  messageForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    messageStatus.className = 'status-message hidden';
+    messageStatus.textContent = '';
+    
+    const formData = new FormData(messageForm);
+    const senderName = formData.get('senderName');
+    const senderContact = formData.get('senderContact');
+    const messageText = formData.get('messageText');
+    
+    if (senderName) {
+      localStorage.setItem('plexMePleaseName', senderName);
+    }
+    
+    const payload = {
+      app: 'PlexMePlease',
+      type: 'direct_message',
+      status: 'unread',
+      message: messageText,
+      senderName: senderName || 'Anonymous',
+      senderContact: senderContact || 'No contact provided',
+      createdAt: serverTimestamp(),
+      priority: 'Normal'
+    };
+
+    msgSubmitBtn.disabled = true;
+    msgBtnText.classList.add('hidden');
+    if (msgLoader) msgLoader.classList.remove('hidden');
+
+    try {
+      await addDoc(collection(db, 'feedback'), payload);
+      
+      messageStatus.textContent = 'Message sent successfully!';
+      messageStatus.className = 'status-message success';
+      messageForm.reset();
+      
+      // Restore name if it was saved
+      const newSavedName = localStorage.getItem('plexMePleaseName');
+      if (newSavedName) {
+        document.getElementById('senderName').value = newSavedName;
+      }
+      
+    } catch (error) {
+      console.error('Error sending message:', error);
+      messageStatus.textContent = 'Failed to send message. Please try again.';
+      messageStatus.className = 'status-message error';
+    } finally {
+      msgSubmitBtn.disabled = false;
+      msgBtnText.classList.remove('hidden');
+      if (msgLoader) msgLoader.classList.add('hidden');
+    }
+  });
 }
