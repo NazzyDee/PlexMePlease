@@ -96,8 +96,18 @@ onSnapshot(q, (snapshot) => {
     return;
   }
   
+  let hasValidMessages = false;
   snapshot.forEach((doc) => {
     const data = doc.data();
+    
+    if (data.expiresAt) {
+      const expiresAt = data.expiresAt.toDate ? data.expiresAt.toDate().getTime() : data.expiresAt;
+      if (Date.now() > expiresAt) {
+        return; // skip expired
+      }
+    }
+    
+    hasValidMessages = true;
     const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
     
     const item = document.createElement('div');
@@ -111,6 +121,10 @@ onSnapshot(q, (snapshot) => {
     `;
     messagesList.appendChild(item);
   });
+  
+  if (!hasValidMessages) {
+    messagesList.innerHTML = '<div class="loading-messages">No messages yet.</div>';
+  }
 });
 
 // Notification Toggle Logic
