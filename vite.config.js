@@ -9,8 +9,8 @@ export default defineConfig({
         enabled: false // Disabled in dev so code changes reflect immediately
       },
       manifest: {
-        name: 'Plex Request',
-        short_name: 'PlexReq',
+        name: 'PlexMePlease',
+        short_name: 'PlexMePlease',
         description: 'Request Movies and TV Shows for Plex',
         theme_color: '#0f0f13',
         background_color: '#0f0f13',
