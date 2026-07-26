@@ -175,6 +175,59 @@ if (savedName) {
   if (senderNameInput) senderNameInput.value = savedName;
 }
 
+// Add media items dynamic functionality
+const mediaItemsContainer = document.getElementById('media-items-container');
+const addMediaBtn = document.getElementById('addMediaBtn');
+
+function updateMediaItemHeaders() {
+  const items = mediaItemsContainer.querySelectorAll('.media-item');
+  items.forEach((item, index) => {
+    const header = item.querySelector('h4');
+    header.textContent = `Request ${index + 1}`;
+    
+    const removeBtn = item.querySelector('.remove-item-btn');
+    if (items.length > 1) {
+      removeBtn.classList.remove('hidden');
+    } else {
+      removeBtn.classList.add('hidden');
+    }
+  });
+}
+
+addMediaBtn.addEventListener('click', () => {
+  const items = mediaItemsContainer.querySelectorAll('.media-item');
+  const firstItem = items[0];
+  const newItem = firstItem.cloneNode(true);
+  
+  // Clear inputs in cloned item
+  newItem.querySelectorAll('input').forEach(input => input.value = '');
+  newItem.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+  
+  // Add remove event listener
+  const removeBtn = newItem.querySelector('.remove-item-btn');
+  removeBtn.addEventListener('click', () => {
+    newItem.remove();
+    updateMediaItemHeaders();
+  });
+  
+  mediaItemsContainer.appendChild(newItem);
+  updateMediaItemHeaders();
+});
+
+// Need to also bind remove button on the initial first item just in case
+const initialRemoveBtn = mediaItemsContainer.querySelector('.remove-item-btn');
+initialRemoveBtn.addEventListener('click', (e) => {
+  const item = e.target.closest('.media-item');
+  item.remove();
+  updateMediaItemHeaders();
+});
+
+form.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
+    e.preventDefault();
+  }
+});
+
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
 
@@ -185,36 +238,50 @@ form.addEventListener('submit', async (e) => {
   // Get form data
   const formData = new FormData(form);
   const friendName = formData.get('friendName');
-  const mediaTitle = formData.get('mediaTitle');
-  const mediaType = formData.get('mediaType');
-  const releaseYear = formData.get('releaseYear');
   
   // Save name to cache
   localStorage.setItem('plexMePleaseName', friendName);
   
-  const yearText = releaseYear ? ` (${releaseYear})` : '';
-  const payload = {
-    app: 'PlexMePlease',
-    type: 'feature_request',
-    status: 'unresolved',
-    message: `New Request from ${friendName}: ${mediaTitle}${yearText} [${mediaType}]`,
-    user: friendName,
-    createdAt: serverTimestamp(),
-    priority: 'Normal'
-  };
-
   // Set loading state
   submitBtn.disabled = true;
   btnText.classList.add('hidden');
   loader.classList.remove('hidden');
 
   try {
-    const docRef = await addDoc(collection(db, 'feedback'), payload);
-    console.log("Document written with ID: ", docRef.id);
+    const items = mediaItemsContainer.querySelectorAll('.media-item');
+    const promises = Array.from(items).map(item => {
+      const mediaTitle = item.querySelector('[name="mediaTitle"]').value;
+      const releaseYear = item.querySelector('[name="releaseYear"]').value;
+      const mediaType = item.querySelector('[name="mediaType"]').value;
+
+      const yearText = releaseYear ? ` (${releaseYear})` : '';
+      const payload = {
+        app: 'PlexMePlease',
+        type: 'feature_request',
+        status: 'unresolved',
+        message: `New Request from ${friendName}: ${mediaTitle}${yearText} [${mediaType}]`,
+        user: friendName,
+        createdAt: serverTimestamp(),
+        priority: 'Normal'
+      };
+
+      return addDoc(collection(db, 'feedback'), payload);
+    });
+
+    await Promise.all(promises);
     
-    showStatus('Request sent successfully!', 'success');
+    showStatus(items.length > 1 ? 'Requests sent successfully!' : 'Request sent successfully!', 'success');
+    
+    // Reset form, but we also want to remove extra items
     form.reset();
     document.getElementById('friendName').value = friendName; // Restore name
+    
+    // Remove all but first item
+    const currentItems = mediaItemsContainer.querySelectorAll('.media-item');
+    for (let i = 1; i < currentItems.length; i++) {
+      currentItems[i].remove();
+    }
+    updateMediaItemHeaders();
     
   } catch (error) {
     console.error('Error sending request:', error);
@@ -239,6 +306,12 @@ if (messageForm) {
   const msgBtnText = msgSubmitBtn.querySelector('.btn-text');
   const msgLoader = msgSubmitBtn.querySelector('.loader');
   const messageStatus = document.getElementById('messageStatus');
+
+  messageForm.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
+      e.preventDefault();
+    }
+  });
 
   messageForm.addEventListener('submit', async (e) => {
     e.preventDefault();

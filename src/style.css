@@ -149,6 +149,60 @@ button:disabled {
   transform: none;
 }
 
+.media-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.media-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.media-item-header h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-color-secondary);
+}
+
+.remove-item-btn {
+  background: none;
+  border: none;
+  color: var(--text-color-secondary);
+  padding: 0.25rem;
+  margin: 0;
+  width: auto;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-item-btn:hover {
+  background: rgba(255, 74, 74, 0.1);
+  color: var(--error);
+  transform: none;
+}
+
+.secondary-btn {
+  background: transparent;
+  color: var(--primary);
+  border: 1px dashed var(--primary);
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.secondary-btn:hover {
+  background: rgba(229, 160, 13, 0.1);
+}
+
 /* Loader */
 .loader {
   border: 2px solid rgba(0,0,0,0.2);

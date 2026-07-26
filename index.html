@@ -48,23 +48,40 @@
                 <input type="text" id="friendName" name="friendName" placeholder="e.g. John Doe" required />
               </div>
 
-              <div class="form-group">
-                <label for="mediaTitle">Title</label>
-                <input type="text" id="mediaTitle" name="mediaTitle" placeholder="e.g. Inception or The Office" required />
+              <div id="media-items-container">
+                <div class="media-item">
+                  <div class="media-item-header">
+                    <h4>Request 1</h4>
+                    <button type="button" class="remove-item-btn hidden" aria-label="Remove item">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" name="mediaTitle" placeholder="e.g. Inception or The Office" required />
+                  </div>
+
+                  <div class="form-group">
+                    <label>Year of Release</label>
+                    <input type="number" name="releaseYear" placeholder="e.g. 2010" />
+                  </div>
+
+                  <div class="form-group">
+                    <label>Type</label>
+                    <select name="mediaType">
+                      <option value="movie">Movie</option>
+                      <option value="tv">TV Show</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
-              <div class="form-group">
-                <label for="releaseYear">Year of Release</label>
-                <input type="number" id="releaseYear" name="releaseYear" placeholder="e.g. 2010" />
-              </div>
-
-              <div class="form-group">
-                <label for="mediaType">Type</label>
-                <select id="mediaType" name="mediaType">
-                  <option value="movie">Movie</option>
-                  <option value="tv">TV Show</option>
-                </select>
-              </div>
+              <button type="button" id="addMediaBtn" class="secondary-btn">
+                + Add Another
+              </button>
 
               <button type="submit" id="submitBtn">
                 <span class="btn-text">Send Request</span>
