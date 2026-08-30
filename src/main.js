@@ -86,6 +86,229 @@ navItems.forEach(item => {
   });
 });
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function renderBroadcastItem(docSnap) {
+  const data = docSnap.data();
+  const id = docSnap.id;
+
+  // Skip broadcasts targeted at other apps
+  if (data.app && data.app !== 'All Apps' && data.app !== 'PlexMePlease') {
+    return null;
+  }
+
+  if (data.expiresAt) {
+    const expiresAt = data.expiresAt.toDate ? data.expiresAt.toDate().getTime() : data.expiresAt;
+    if (Date.now() > expiresAt) {
+      return null; // skip expired
+    }
+  }
+
+  const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
+  const item = document.createElement('div');
+  item.className = 'message-item' + (data.category === 'poll' ? ' poll-card' : '');
+  item.setAttribute('data-broadcast-id', id);
+
+  if (data.category === 'poll' && Array.isArray(data.pollOptions) && data.pollOptions.length > 0) {
+    const voteKey = 'pmp_poll_vote_' + id;
+    let storedVote = null;
+    try {
+      const raw = localStorage.getItem(voteKey);
+      if (raw) storedVote = JSON.parse(raw);
+    } catch {
+      const raw = localStorage.getItem(voteKey);
+      if (raw) storedVote = { selectedOption: raw };
+    }
+
+    if (storedVote && storedVote.selectedOption) {
+      // Locked-in voted state - private results, only show thanks message
+      item.innerHTML = `
+        <div class="message-header">
+          <div class="poll-header-title">
+            <span class="poll-badge">📊 Poll</span>
+            <span class="message-title">${escapeHtml(data.title)}</span>
+          </div>
+          <span class="message-time">${dateObj.toLocaleDateString()}</span>
+        </div>
+        ${data.body ? `<div class="message-body">${escapeHtml(data.body)}</div>` : ''}
+        <div class="poll-locked-options">
+          ${data.pollOptions.map(opt => {
+            const isChosen = opt.trim().toLowerCase() === storedVote.selectedOption.trim().toLowerCase();
+            return `
+              <div class="poll-locked-option ${isChosen ? 'chosen' : ''}">
+                <span class="poll-option-check">${isChosen ? '✓' : '○'}</span>
+                <span class="poll-option-label-text">${escapeHtml(opt)}</span>
+                ${isChosen ? '<span class="poll-chosen-tag">Your Vote</span>' : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <div class="poll-feedback-banner">
+          <span class="poll-feedback-icon">✓</span>
+          <div class="poll-feedback-text">
+            <strong>Thanks for the feedback!</strong>
+            <span>Your vote is locked in.</span>
+          </div>
+        </div>
+      `;
+    } else {
+      // Active voting state
+      const savedName = localStorage.getItem('plexMePleaseName') || '';
+      item.innerHTML = `
+        <div class="message-header">
+          <div class="poll-header-title">
+            <span class="poll-badge">📊 Poll</span>
+            <span class="message-title">${escapeHtml(data.title)}</span>
+          </div>
+          <span class="message-time">${dateObj.toLocaleDateString()}</span>
+        </div>
+        ${data.body ? `<div class="message-body">${escapeHtml(data.body)}</div>` : ''}
+        <form class="poll-vote-form" data-poll-id="${id}">
+          <div class="poll-options-list">
+            ${data.pollOptions.map((opt, optIdx) => `
+              <label class="poll-option-label" for="poll_opt_${id}_${optIdx}">
+                <input 
+                  type="radio" 
+                  id="poll_opt_${id}_${optIdx}" 
+                  name="poll_option_${id}" 
+                  value="${escapeHtml(opt)}" 
+                  class="poll-radio" 
+                  required
+                />
+                <div class="poll-option-card">
+                  <span class="poll-custom-radio"></span>
+                  <span class="poll-option-name">${escapeHtml(opt)}</span>
+                </div>
+              </label>
+            `).join('')}
+          </div>
+
+          <div class="poll-voter-input-wrap">
+            <label class="poll-voter-label" for="voter_name_${id}">Your Name</label>
+            <input 
+              type="text" 
+              id="voter_name_${id}" 
+              name="voterName" 
+              class="poll-voter-input" 
+              placeholder="e.g. John Doe" 
+              value="${escapeHtml(savedName)}" 
+              required
+            />
+          </div>
+
+          <button type="submit" class="poll-submit-btn">
+            <span class="btn-text">Submit Vote</span>
+            <span class="loader hidden"></span>
+          </button>
+
+          <div class="status-message hidden poll-status"></div>
+        </form>
+      `;
+
+      // Attach submit listener
+      const pollForm = item.querySelector('.poll-vote-form');
+      pollForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const statusBox = pollForm.querySelector('.poll-status');
+        const submitBtn = pollForm.querySelector('.poll-submit-btn');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const loader = submitBtn.querySelector('.loader');
+
+        statusBox.className = 'status-message hidden poll-status';
+        statusBox.textContent = '';
+
+        const formData = new FormData(pollForm);
+        const selectedOption = formData.get(`poll_option_${id}`);
+        const voterName = (formData.get('voterName') || '').trim();
+
+        if (!selectedOption) {
+          statusBox.textContent = 'Please choose an option to vote.';
+          statusBox.className = 'status-message error poll-status';
+          return;
+        }
+
+        if (!voterName) {
+          statusBox.textContent = 'Please enter your name.';
+          statusBox.className = 'status-message error poll-status';
+          return;
+        }
+
+        // Save name for PlexMePlease session & forms
+        localStorage.setItem('plexMePleaseName', voterName);
+        const fnInput = document.getElementById('friendName');
+        if (fnInput) fnInput.value = voterName;
+        const snInput = document.getElementById('senderName');
+        if (snInput) snInput.value = voterName;
+
+        submitBtn.disabled = true;
+        btnText.classList.add('hidden');
+        loader.classList.remove('hidden');
+
+        try {
+          const payload = {
+            app: 'PlexMePlease',
+            type: 'poll_vote',
+            status: 'unresolved',
+            pollId: id,
+            pollTitle: data.title,
+            selectedOption: selectedOption,
+            user: voterName,
+            sender: voterName,
+            message: `📊 Poll Vote from ${voterName}: "${selectedOption}" (Poll: "${data.title}")`,
+            createdAt: serverTimestamp(),
+            priority: 'Normal'
+          };
+
+          await addDoc(collection(db, 'feedback'), payload);
+
+          // Lock in vote locally in localStorage
+          localStorage.setItem(voteKey, JSON.stringify({
+            selectedOption: selectedOption,
+            votedAt: Date.now()
+          }));
+
+          // Replace with locked item immediately
+          const newItem = renderBroadcastItem(docSnap);
+          if (newItem) {
+            item.replaceWith(newItem);
+          }
+        } catch (err) {
+          console.error('Error submitting vote:', err);
+          statusBox.textContent = 'Failed to submit vote. Please try again.';
+          statusBox.className = 'status-message error poll-status';
+          submitBtn.disabled = false;
+          btnText.classList.remove('hidden');
+          loader.classList.add('hidden');
+        }
+      });
+    }
+  } else {
+    // Standard broadcast message
+    item.innerHTML = `
+      <div class="message-header">
+        <span class="message-title">${escapeHtml(data.title)}</span>
+        <span class="message-time">${dateObj.toLocaleDateString()}</span>
+      </div>
+      <div class="message-body">${escapeHtml(data.body)}</div>
+      ${data.actionUrl ? `
+        <a href="${escapeHtml(data.actionUrl)}" target="_blank" rel="noopener noreferrer" class="broadcast-link-btn">
+          Open Link ↗
+        </a>
+      ` : ''}
+    `;
+  }
+
+  return item;
+}
+
 // Fetch Messages from Firestore
 const messagesList = document.getElementById('messages-list');
 const q = query(collection(db, 'broadcasts'), orderBy('createdAt', 'desc'));
@@ -98,28 +321,11 @@ onSnapshot(q, (snapshot) => {
   
   let hasValidMessages = false;
   snapshot.forEach((doc) => {
-    const data = doc.data();
-    
-    if (data.expiresAt) {
-      const expiresAt = data.expiresAt.toDate ? data.expiresAt.toDate().getTime() : data.expiresAt;
-      if (Date.now() > expiresAt) {
-        return; // skip expired
-      }
+    const item = renderBroadcastItem(doc);
+    if (item) {
+      hasValidMessages = true;
+      messagesList.appendChild(item);
     }
-    
-    hasValidMessages = true;
-    const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
-    
-    const item = document.createElement('div');
-    item.className = 'message-item';
-    item.innerHTML = `
-      <div class="message-header">
-        <span class="message-title">${data.title}</span>
-        <span class="message-time">${dateObj.toLocaleDateString()}</span>
-      </div>
-      <div class="message-body">${data.body}</div>
-    `;
-    messagesList.appendChild(item);
   });
   
   if (!hasValidMessages) {
