@@ -467,6 +467,9 @@ form.addEventListener('submit', async (e) => {
         status: 'unresolved',
         message: `New Request from ${friendName}: ${mediaTitle}${yearText} [${mediaType}]`,
         user: friendName,
+        mediaTitle: mediaTitle.trim(),
+        releaseYear: releaseYear ? parseInt(releaseYear, 10) : null,
+        mediaType: mediaType,
         createdAt: serverTimestamp(),
         priority: 'Normal'
       };
