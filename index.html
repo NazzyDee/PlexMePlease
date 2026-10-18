@@ -90,33 +90,140 @@
             </form>
 
             <div id="statusMessage" class="status-message hidden"></div>
+
+            <div class="quick-report-prompt">
+              <span>Experiencing lag or buffering?</span>
+              <button type="button" class="quick-link-btn" id="quickReportBtn">Report Streaming Issue &rarr;</button>
+            </div>
           </div>
         </div>
 
-        <!-- Send Message View -->
+        <!-- Send Message / Report Issue View -->
         <div id="view-messages" class="view hidden">
           <div class="card">
-            <h2>Send Message</h2>
-            <p class="subtitle">Send a direct message to the server admin.</p>
+            <!-- Mode Switcher Tabs -->
+            <div class="mode-tabs">
+              <button type="button" class="mode-tab active" id="tabStreaming" data-type="streaming_issue">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                  <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                  <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                  <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                </svg>
+                <span>Report Lag / Issue</span>
+              </button>
+              <button type="button" class="mode-tab" id="tabMessage" data-type="direct_message">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <span>General Message</span>
+              </button>
+            </div>
+
+            <div id="header-streaming">
+              <h2>Report Streaming Issue</h2>
+              <p class="subtitle">Experiencing buffering, lag, or playback errors? Let us know so we can fix it.</p>
+            </div>
+            <div id="header-message" class="hidden">
+              <h2>Send Message</h2>
+              <p class="subtitle">Send a direct message or feedback to the server admin.</p>
+            </div>
             
             <form id="message-form">
+              <input type="hidden" id="reportType" name="reportType" value="streaming_issue" />
+
               <div class="form-group">
-                <label for="senderName">Your Name (Optional)</label>
-                <input type="text" id="senderName" name="senderName" placeholder="e.g. Jane Doe" />
+                <label for="senderName">Your Name <span class="required-indicator" id="senderNameRequired">*</span></label>
+                <input type="text" id="senderName" name="senderName" placeholder="e.g. John Doe" required />
               </div>
 
               <div class="form-group">
-                <label for="senderContact">Contact Info (If you want a reply)</label>
-                <input type="text" id="senderContact" name="senderContact" placeholder="Email or Phone number" />
+                <label for="senderContact">Contact Info (Optional, if you want updates)</label>
+                <input type="text" id="senderContact" name="senderContact" placeholder="Email or phone number" />
+              </div>
+
+              <!-- Streaming Issue Specific Fields -->
+              <div id="streaming-fields">
+                <div class="form-group">
+                  <label for="issueCategory">What problem are you having?</label>
+                  <select id="issueCategory" name="issueCategory">
+                    <option value="Buffering / Lag">📶 Constant Buffering / Lag / Stuttering</option>
+                    <option value="Won't Play / Black Screen">🚫 Won't Play / Black Screen / Playback Error</option>
+                    <option value="Poor Video Quality / Blurry">📉 Poor Video Quality / Low Resolution</option>
+                    <option value="Audio Out of Sync / Missing">🔇 Audio Out of Sync / No Audio</option>
+                    <option value="Plex App Freezing">💥 App Freezing or Crashing</option>
+                    <option value="Other Streaming Problem">❓ Other Playback Issue</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="mediaTitleWatched">Movie or TV Show Watched</label>
+                  <input type="text" id="mediaTitleWatched" name="mediaTitleWatched" placeholder="e.g. Dune 2 or Shogun S01E03" />
+                </div>
+
+                <div class="form-grid-row">
+                  <div class="form-group">
+                    <label for="devicePlatform">Device / Player</label>
+                    <select id="devicePlatform" name="devicePlatform">
+                      <option value="Smart TV (LG / Samsung / Sony)">Smart TV (LG, Samsung, Sony)</option>
+                      <option value="Apple TV">Apple TV</option>
+                      <option value="Fire TV / Fire Stick">Amazon Fire TV / Stick</option>
+                      <option value="Roku">Roku</option>
+                      <option value="iPhone / iPad">iPhone / iPad</option>
+                      <option value="Android Phone / Tablet">Android Phone / Tablet</option>
+                      <option value="Web Browser">Web Browser (Chrome, Safari, Edge)</option>
+                      <option value="Desktop App (PC / Mac)">Plex Desktop App (PC / Mac)</option>
+                      <option value="PlayStation / Xbox">Game Console</option>
+                      <option value="Other">Other Device</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="networkConnection">Connection Type</label>
+                    <select id="networkConnection" name="networkConnection">
+                      <option value="Home Wi-Fi">Home Wi-Fi</option>
+                      <option value="Home Ethernet (Wired)">Home Wired (Ethernet)</option>
+                      <option value="Mobile Data (4G / 5G)">Mobile Data (4G / 5G)</option>
+                      <option value="Away from Home (Remote)">Away from Home (Remote Wi-Fi)</option>
+                      <option value="Not Sure">Not Sure</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
               <div class="form-group">
-                <label for="messageText">Message</label>
-                <textarea id="messageText" name="messageText" placeholder="Type your message here..." required rows="4" style="width: 100%; border-radius: 6px; padding: 0.75rem; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); resize: vertical;"></textarea>
+                <label>Attach Screenshot / Error Photo (Optional)</label>
+                <div class="image-upload-container" id="imageUploadContainer">
+                  <input type="file" id="screenshotInput" name="screenshot" accept="image/*" class="hidden-file-input" />
+                  
+                  <div class="upload-dropzone" id="uploadDropzone" tabindex="0" role="button" aria-label="Attach screenshot or photo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                      <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    <span class="upload-text"><strong>Click to attach image</strong> or take photo</span>
+                    <span class="upload-subtext">Screenshots, error messages &bull; Paste supported (Ctrl+V)</span>
+                  </div>
+
+                  <div class="image-preview-wrapper hidden" id="imagePreviewWrapper">
+                    <img id="imagePreview" alt="Attachment preview" />
+                    <div class="image-preview-info">
+                      <span id="imagePreviewName" class="image-name">screenshot.jpg</span>
+                      <span id="imagePreviewSize" class="image-size">120 KB</span>
+                    </div>
+                    <button type="button" class="remove-image-btn" id="removeImageBtn" title="Remove image" aria-label="Remove image">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <button type="submit" id="sendMessageBtn">
-                <span class="btn-text">Send Message</span>
+                <span class="btn-text" id="sendMessageBtnText">Submit Streaming Report</span>
                 <span class="loader hidden"></span>
               </button>
             </form>
@@ -148,7 +255,7 @@
       </main>
 
       <nav class="bottom-nav">
-        <button class="nav-item active" data-target="view-request">
+        <button class="nav-item active" data-target="view-request" id="navItemRequest">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
             <line x1="7" y1="2" x2="7" y2="22"></line>
@@ -161,11 +268,11 @@
           </svg>
           <span>Request</span>
         </button>
-        <button class="nav-item" data-target="view-messages">
+        <button class="nav-item" data-target="view-messages" id="navItemMessages">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
           </svg>
-          <span>Send Message</span>
+          <span>Report & Message</span>
         </button>
         <button class="nav-item" data-target="view-notifications">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -1,8 +1,9 @@
 import { registerSW } from 'virtual:pwa-register';
-import { db, auth, messaging } from './firebase-config.js';
+import { db, auth, messaging, storage } from './firebase-config.js';
 import { collection, addDoc, serverTimestamp, setDoc, doc, onSnapshot, query, orderBy, deleteDoc } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { getToken, onMessage } from 'firebase/messaging';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Authenticate anonymously on load
 signInAnonymously(auth).catch(console.error);
@@ -66,25 +67,43 @@ const statusMessage = document.getElementById('statusMessage');
 const navItems = document.querySelectorAll('.nav-item');
 const views = document.querySelectorAll('.view');
 
-navItems.forEach(item => {
-  item.addEventListener('click', () => {
-    // Remove active class from all nav items and views
-    navItems.forEach(nav => nav.classList.remove('active'));
-    views.forEach(view => {
+function switchView(targetId) {
+  navItems.forEach(nav => {
+    if (nav.getAttribute('data-target') === targetId) {
+      nav.classList.add('active');
+    } else {
+      nav.classList.remove('active');
+    }
+  });
+  views.forEach(view => {
+    if (view.id === targetId) {
+      view.classList.remove('hidden');
+      view.classList.add('active');
+    } else {
       view.classList.remove('active');
       view.classList.add('hidden');
-    });
+    }
+  });
+}
 
-    // Add active class to clicked nav item
-    item.classList.add('active');
-    
-    // Show corresponding view
+navItems.forEach(item => {
+  item.addEventListener('click', () => {
     const targetId = item.getAttribute('data-target');
-    const targetView = document.getElementById(targetId);
-    targetView.classList.remove('hidden');
-    targetView.classList.add('active');
+    switchView(targetId);
   });
 });
+
+const quickReportBtn = document.getElementById('quickReportBtn');
+if (quickReportBtn) {
+  quickReportBtn.addEventListener('click', () => {
+    switchView('view-messages');
+    if (typeof setReportMode === 'function') {
+      setReportMode('streaming_issue');
+    }
+    const mediaWatchedInput = document.getElementById('mediaTitleWatched');
+    if (mediaWatchedInput) mediaWatchedInput.focus();
+  });
+}
 
 function escapeHtml(str) {
   if (!str) return '';
@@ -508,7 +527,201 @@ function showStatus(message, type) {
   statusMessage.className = `status-message ${type}`;
 }
 
-// Handle Send Message Form
+// Mode Tabs & Feedback/Report Handling
+const tabStreaming = document.getElementById('tabStreaming');
+const tabMessage = document.getElementById('tabMessage');
+const headerStreaming = document.getElementById('header-streaming');
+const headerMessage = document.getElementById('header-message');
+const streamingFields = document.getElementById('streaming-fields');
+const reportTypeInput = document.getElementById('reportType');
+const messageTextLabel = document.getElementById('messageTextLabel');
+const messageText = document.getElementById('messageText');
+const sendMessageBtnText = document.getElementById('sendMessageBtnText');
+const senderNameRequired = document.getElementById('senderNameRequired');
+const senderNameInput = document.getElementById('senderName');
+
+function setReportMode(mode) {
+  if (mode === 'streaming_issue') {
+    if (tabStreaming) tabStreaming.classList.add('active');
+    if (tabMessage) tabMessage.classList.remove('active');
+    if (headerStreaming) headerStreaming.classList.remove('hidden');
+    if (headerMessage) headerMessage.classList.add('hidden');
+    if (streamingFields) streamingFields.classList.remove('hidden');
+    if (reportTypeInput) reportTypeInput.value = 'streaming_issue';
+    if (messageTextLabel) messageTextLabel.textContent = 'Additional Details';
+    if (messageText) messageText.placeholder = 'Describe what happens (e.g. pauses to buffer every 30 seconds, started around 45 min mark...)';
+    if (sendMessageBtnText) sendMessageBtnText.textContent = 'Submit Streaming Report';
+    if (senderNameRequired) senderNameRequired.textContent = '*';
+    if (senderNameInput) senderNameInput.required = true;
+  } else {
+    if (tabMessage) tabMessage.classList.add('active');
+    if (tabStreaming) tabStreaming.classList.remove('active');
+    if (headerMessage) headerMessage.classList.remove('hidden');
+    if (headerStreaming) headerStreaming.classList.add('hidden');
+    if (streamingFields) streamingFields.classList.add('hidden');
+    if (reportTypeInput) reportTypeInput.value = 'direct_message';
+    if (messageTextLabel) messageTextLabel.textContent = 'Message';
+    if (messageText) messageText.placeholder = 'Type your message here...';
+    if (sendMessageBtnText) sendMessageBtnText.textContent = 'Send Message';
+    if (senderNameRequired) senderNameRequired.textContent = '(Optional)';
+    if (senderNameInput) senderNameInput.required = false;
+  }
+}
+
+if (tabStreaming) {
+  tabStreaming.addEventListener('click', () => setReportMode('streaming_issue'));
+}
+if (tabMessage) {
+  tabMessage.addEventListener('click', () => setReportMode('direct_message'));
+}
+
+// Screenshot / Image Attachment Handling
+const screenshotInput = document.getElementById('screenshotInput');
+const uploadDropzone = document.getElementById('uploadDropzone');
+const imagePreviewWrapper = document.getElementById('imagePreviewWrapper');
+const imagePreview = document.getElementById('imagePreview');
+const imagePreviewName = document.getElementById('imagePreviewName');
+const imagePreviewSize = document.getElementById('imagePreviewSize');
+const removeImageBtn = document.getElementById('removeImageBtn');
+
+let selectedImageFile = null;
+let compressedImageData = null;
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  const kb = bytes / 1024;
+  if (kb < 1024) return kb.toFixed(1) + ' KB';
+  return (kb / 1024).toFixed(1) + ' MB';
+}
+
+function compressImage(file, maxWidth = 1280, maxHeight = 1280, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        canvas.toBlob((blob) => {
+          resolve({
+            dataUrl,
+            blob,
+            size: blob ? blob.size : dataUrl.length,
+            width,
+            height
+          });
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = reject;
+    };
+    reader.onerror = reject;
+  });
+}
+
+async function handleFileSelect(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  try {
+    selectedImageFile = file;
+    compressedImageData = await compressImage(file);
+    
+    if (imagePreview) imagePreview.src = compressedImageData.dataUrl;
+    if (imagePreviewName) imagePreviewName.textContent = file.name || 'screenshot.jpg';
+    if (imagePreviewSize) imagePreviewSize.textContent = formatFileSize(compressedImageData.size);
+    
+    if (uploadDropzone) uploadDropzone.classList.add('hidden');
+    if (imagePreviewWrapper) imagePreviewWrapper.classList.remove('hidden');
+  } catch (err) {
+    console.error('Error processing image:', err);
+  }
+}
+
+function clearAttachedImage() {
+  selectedImageFile = null;
+  compressedImageData = null;
+  if (screenshotInput) screenshotInput.value = '';
+  if (imagePreview) imagePreview.src = '';
+  if (uploadDropzone) uploadDropzone.classList.remove('hidden');
+  if (imagePreviewWrapper) imagePreviewWrapper.classList.add('hidden');
+}
+
+if (uploadDropzone && screenshotInput) {
+  uploadDropzone.addEventListener('click', () => screenshotInput.click());
+  uploadDropzone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      screenshotInput.click();
+    }
+  });
+
+  screenshotInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileSelect(e.target.files[0]);
+    }
+  });
+
+  // Drag and drop
+  uploadDropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadDropzone.classList.add('dragover');
+  });
+
+  uploadDropzone.addEventListener('dragleave', () => {
+    uploadDropzone.classList.remove('dragover');
+  });
+
+  uploadDropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadDropzone.classList.remove('dragover');
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  });
+}
+
+if (removeImageBtn) {
+  removeImageBtn.addEventListener('click', clearAttachedImage);
+}
+
+// Paste support (Ctrl+V)
+window.addEventListener('paste', (e) => {
+  const messagesView = document.getElementById('view-messages');
+  if (!messagesView || !messagesView.classList.contains('active')) return;
+  
+  if (e.clipboardData && e.clipboardData.items) {
+    for (let i = 0; i < e.clipboardData.items.length; i++) {
+      const item = e.clipboardData.items[i];
+      if (item.type.indexOf('image') !== -1) {
+        const file = item.getAsFile();
+        if (file) {
+          handleFileSelect(file);
+          break;
+        }
+      }
+    }
+  }
+});
+
+// Handle Send Message / Streaming Issue Form
 const messageForm = document.getElementById('message-form');
 if (messageForm) {
   const msgSubmitBtn = document.getElementById('sendMessageBtn');
@@ -529,45 +742,117 @@ if (messageForm) {
     messageStatus.textContent = '';
     
     const formData = new FormData(messageForm);
-    const senderName = formData.get('senderName');
-    const senderContact = formData.get('senderContact');
-    const messageText = formData.get('messageText');
+    const reportType = formData.get('reportType') || 'streaming_issue';
+    const senderName = (formData.get('senderName') || '').trim();
+    const senderContact = (formData.get('senderContact') || '').trim();
+    const messageContent = (formData.get('messageText') || '').trim();
     
     if (senderName) {
       localStorage.setItem('plexMePleaseName', senderName);
+      const friendNameInput = document.getElementById('friendName');
+      if (friendNameInput) friendNameInput.value = senderName;
     }
-    
-    const payload = {
-      app: 'PlexMePlease',
-      type: 'direct_message',
-      status: 'unread',
-      message: messageText,
-      senderName: senderName || 'Anonymous',
-      senderContact: senderContact || 'No contact provided',
-      createdAt: serverTimestamp(),
-      priority: 'Normal'
-    };
+
+    if (reportType === 'streaming_issue' && !senderName) {
+      messageStatus.textContent = 'Please enter your name so the admin knows who is experiencing playback issues.';
+      messageStatus.className = 'status-message error';
+      return;
+    }
 
     msgSubmitBtn.disabled = true;
     msgBtnText.classList.add('hidden');
     if (msgLoader) msgLoader.classList.remove('hidden');
 
     try {
+      // Upload image if attached
+      let uploadedImageUrl = null;
+      if (compressedImageData) {
+        const filename = `screenshot_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`;
+        try {
+          if (storage) {
+            const storageRef = ref(storage, `feedback_attachments/${filename}`);
+            const snapshot = await uploadBytes(storageRef, compressedImageData.blob, {
+              contentType: 'image/jpeg'
+            });
+            uploadedImageUrl = await getDownloadURL(snapshot.ref);
+          }
+        } catch (uploadErr) {
+          console.warn('Firebase Storage upload failed or restricted, falling back to embedded data URL:', uploadErr);
+        }
+
+        // Fallback to compressed base64 dataUrl if storage was not used or failed
+        if (!uploadedImageUrl && compressedImageData.dataUrl) {
+          uploadedImageUrl = compressedImageData.dataUrl;
+        }
+      }
+
+      let payload;
+      if (reportType === 'streaming_issue') {
+        const issueCategory = formData.get('issueCategory') || 'Buffering / Lag';
+        const mediaTitleWatched = (formData.get('mediaTitleWatched') || '').trim();
+        const devicePlatform = formData.get('devicePlatform') || 'Not specified';
+        const networkConnection = formData.get('networkConnection') || 'Not specified';
+
+        payload = {
+          app: 'PlexMePlease',
+          type: 'streaming_issue',
+          status: 'unresolved',
+          priority: 'high',
+          user: senderName,
+          sender: senderName,
+          senderName: senderName,
+          senderContact: senderContact || 'No contact provided',
+          issueCategory: issueCategory,
+          mediaTitle: mediaTitleWatched,
+          device: devicePlatform,
+          connection: networkConnection,
+          details: messageContent,
+          imageUrl: uploadedImageUrl || null,
+          hasAttachment: Boolean(uploadedImageUrl),
+          message: `📶 [Streaming Issue: ${issueCategory}] ${mediaTitleWatched ? `Watched: "${mediaTitleWatched}" | ` : ''}Device: ${devicePlatform} (${networkConnection}) | Details: ${messageContent}${uploadedImageUrl ? ' 📷 [Screenshot Attached]' : ''}`,
+          createdAt: serverTimestamp()
+        };
+      } else {
+        payload = {
+          app: 'PlexMePlease',
+          type: 'direct_message',
+          status: 'unread',
+          priority: 'Normal',
+          message: messageContent + (uploadedImageUrl ? ' 📷 [Screenshot Attached]' : ''),
+          details: messageContent,
+          imageUrl: uploadedImageUrl || null,
+          hasAttachment: Boolean(uploadedImageUrl),
+          user: senderName || 'Anonymous',
+          sender: senderName || 'Anonymous',
+          senderName: senderName || 'Anonymous',
+          senderContact: senderContact || 'No contact provided',
+          createdAt: serverTimestamp()
+        };
+      }
+
       await addDoc(collection(db, 'feedback'), payload);
       
-      messageStatus.textContent = 'Message sent successfully!';
+      const successMsg = reportType === 'streaming_issue'
+        ? (uploadedImageUrl ? 'Streaming issue and screenshot submitted! Admin notified.' : 'Streaming issue report submitted! Admin notified.')
+        : 'Message sent successfully!';
+
+      messageStatus.textContent = successMsg;
       messageStatus.className = 'status-message success';
       messageForm.reset();
+      clearAttachedImage();
       
-      // Restore name if it was saved
-      const newSavedName = localStorage.getItem('plexMePleaseName');
-      if (newSavedName) {
-        document.getElementById('senderName').value = newSavedName;
+      // Keep mode intact and restore saved name
+      if (reportTypeInput) reportTypeInput.value = reportType;
+      setReportMode(reportType);
+      
+      const currentSavedName = localStorage.getItem('plexMePleaseName');
+      if (currentSavedName && senderNameInput) {
+        senderNameInput.value = currentSavedName;
       }
       
     } catch (error) {
-      console.error('Error sending message:', error);
-      messageStatus.textContent = 'Failed to send message. Please try again.';
+      console.error('Error submitting feedback:', error);
+      messageStatus.textContent = 'Failed to submit report. Please check your connection and try again.';
       messageStatus.className = 'status-message error';
     } finally {
       msgSubmitBtn.disabled = false;

@@ -154,6 +154,10 @@ def on_snapshot(col_snapshot, changes, read_time):
             data = doc.to_dict()
 
             if data.get("app") == "PlexMePlease" and data.get("status") == "unresolved":
+                # Only process media requests (feature_request). Skip streaming issues, direct messages, poll votes, etc.
+                if data.get("type") and data.get("type") != "feature_request":
+                    continue
+
                 requester = data.get("user", "Anonymous")
                 title, year, media_type = parse_request_details(data)
 
