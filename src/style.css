@@ -87,6 +87,14 @@ body {
   color: var(--text-color-secondary);
 }
 
+.field-hint {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-color-secondary);
+  margin-top: 0.35rem;
+  line-height: 1.4;
+}
+
 input, select, textarea {
   width: 100%;
   background: var(--input-bg);
